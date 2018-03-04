@@ -1,16 +1,24 @@
 #pragma once
-#define MAX_SAMPLES 1000
+
 class MACD
 {
 private:
-	double samples[MAX_SAMPLES];
-	int samplesLength;
-	char* inputFileName;
-	char* outputFileName;
+	double* samples;
+	double* macdIndicators;
+	double* signals;
+	int samplesAmount;
+	//char* inputFileName;
+	//char* outputFileName;
+
+	
+	bool writeToFile(char* fileName);
+	void allocate();
 public:
-	MACD(char* inputFile);
+	MACD();
+	double ema(int period, double* values, double alpha);
+	int loadSamples(char* inputFile, int lines);
 	double optimalEarning(int days);
-	void compute(char* outputFile);
+	void calculate(char* outputFile);
 	~MACD();
 };
 
