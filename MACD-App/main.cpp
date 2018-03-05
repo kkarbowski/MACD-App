@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
 	//char* outputFile = argv[2];
 
 	char ifile[] = "./Samples.txt";
-	char ofile[] = "wynik";
+	char ofile[] = "results";
 	MACD macd;
 	macd.loadSamples(ifile, 1000);
 	macd.calculate(ofile);

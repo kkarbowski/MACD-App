@@ -5,7 +5,7 @@
 
 #define MIN_SAMPLE_AMOUNT 50
 #define MACD_PERIOD 26
-#define MACD_PERIOD_1 12
+#define MACD_PERIOD_1 12 // < MACD_PERIOD
 #define SIGNAL_PERIOD 9
 
 MACD::MACD()
@@ -14,8 +14,6 @@ MACD::MACD()
 	samples = NULL;
 	signals = NULL;
 	macdIndicators = NULL;
-	//inputFileName = NULL;
-	//outputFileName = NULL;
 }
 
 double MACD::ema(int period, double* values, double alpha)
@@ -36,10 +34,11 @@ bool MACD::writeToFile(char* fileName)
 		fclose(signal);
 		return false;
 	}
-	for (int i = 0; i < samplesAmount - MACD_PERIOD; ++i) {
-		if (i < SIGNAL_PERIOD) fprintf(signal, "0\n");
-		else fprintf(signal, "%fl\n", signals[i - SIGNAL_PERIOD]);
-		fprintf(macd, "%fl\n", macdIndicators[i]);
+	for (int i = 0; i < samplesAmount; ++i) {
+		if (i < SIGNAL_PERIOD + MACD_PERIOD) fprintf(signal, "0\n");
+		else fprintf(signal, "%f\n", signals[i - SIGNAL_PERIOD - MACD_PERIOD]);
+		if (i < MACD_PERIOD) fprintf(macd, "0\n");
+		else fprintf(macd, "%f\n", macdIndicators[i - MACD_PERIOD]);
 	}
 
 	fclose(macd);

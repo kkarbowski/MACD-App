@@ -7,8 +7,6 @@ private:
 	double* macdIndicators;
 	double* signals;
 	int samplesAmount;
-	//char* inputFileName;
-	//char* outputFileName;
 
 	
 	bool writeToFile(char* fileName);
