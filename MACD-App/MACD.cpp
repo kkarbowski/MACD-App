@@ -1,14 +1,16 @@
-#include "MACD.h"
+#include "Macd.h"
 #include <cstdio>
 #include <string>
 
 
 #define MIN_SAMPLE_AMOUNT 50
 #define MACD_PERIOD 26
-#define MACD_PERIOD_1 12 // < MACD_PERIOD
+#define SMALLER_MACD_PERIOD 12 
 #define SIGNAL_PERIOD 9
+#define CHECKED_LAST_ELEMENTS 4 // minimum 1
+#define MS_PERIOD MACD_PERIOD + SIGNAL_PERIOD
 
-MACD::MACD()
+Macd::Macd()
 {
 	samplesAmount = 0;
 	samples = NULL;
@@ -16,14 +18,19 @@ MACD::MACD()
 	macdIndicators = NULL;
 }
 
-double MACD::ema(int period, double* values, double alpha)
+double Macd::ema(int period, double* values, double alpha)
 {
-	if (period == 1) return *values;
-	else return alpha * (*(values - period + 1)) + (1 - alpha) * ema(period - 1, values, alpha);
-	return 0;
+
+	double multiplier = 1, result = 0, numerator = 0, denominator = 0, factor = 1 - alpha;
+	for (int i = 0; i < period + 1; ++i) {
+		numerator += multiplier * (*(values - i));
+		denominator += multiplier;
+		multiplier *= factor;
+	}
+	return numerator/denominator;
 }
 
-bool MACD::writeToFile(char* fileName)
+bool Macd::writeToFile(char* fileName)
 {
 	FILE* signal,* macd;
 	std::string name(fileName);
@@ -35,10 +42,8 @@ bool MACD::writeToFile(char* fileName)
 		return false;
 	}
 	for (int i = 0; i < samplesAmount; ++i) {
-		if (i < SIGNAL_PERIOD + MACD_PERIOD) fprintf(signal, "0\n");
-		else fprintf(signal, "%f\n", signals[i - SIGNAL_PERIOD - MACD_PERIOD]);
-		if (i < MACD_PERIOD) fprintf(macd, "0\n");
-		else fprintf(macd, "%f\n", macdIndicators[i - MACD_PERIOD]);
+		fprintf(signal, "%f\n", signals[i]);
+		fprintf(macd, "%f\n", macdIndicators[i]);
 	}
 
 	fclose(macd);
@@ -46,20 +51,30 @@ bool MACD::writeToFile(char* fileName)
 	return true;
 }
 
-void MACD::allocate()
+void Macd::allocate()
 {
 	if (samples) delete[] samples;
 	samples = new double[samplesAmount];
-
 	if (macdIndicators) delete[] macdIndicators;
-	macdIndicators = new double[samplesAmount - MACD_PERIOD];
-
+	macdIndicators = new double[samplesAmount];
 	if (signals) delete[] signals;
-	signals = new double[samplesAmount - MACD_PERIOD - SIGNAL_PERIOD];
+	signals = new double[samplesAmount];
+	for (int i = 0; i < MS_PERIOD; ++i) {
+		if(i<MACD_PERIOD) macdIndicators[i] = 0;
+		signals[i] = 0;
+	}
+}
+
+bool Macd::isLastHigher(int amount, double * tab1, double * tab2)
+{
+	for (int i = 1; i < amount + 1; ++i) {
+		if (*(tab1 - i) < *(tab2 - i)) return false; // co najmniej 1 z ostatnich elementów jest mniejszy
+	}
+	return true;
 }
 
 
- int MACD::loadSamples(char* inputFile, int lines)
+ int Macd::loadSamples(char* inputFile, int lines)
 {
 	FILE* input;
 	int iter = 0;
@@ -72,30 +87,52 @@ void MACD::allocate()
 	while (fscanf(input, "%lf", &samples[iter]) != EOF && iter < samplesAmount) {
 		++iter;
 	}
+	samplesAmount = iter;
 	fclose(input);
 	return samplesAmount;
 }
 
-double MACD::optimalEarning(int days)
+double Macd::optimalEarning(int initialStock)
 {
-	return 0.0;
+	double	wallet = 0,
+			lastMacd = macdIndicators[MS_PERIOD-1],
+			lastSignal = signals[MS_PERIOD-1];
+	int		stockToBuy = 0,
+			stock = initialStock;
+
+	for (int i = MS_PERIOD; i < samplesAmount; ++i) {
+		if (macdIndicators[i] < signals[i] &&
+			isLastHigher(CHECKED_LAST_ELEMENTS, &macdIndicators[i], &signals[i])) { // MACD przecina z góry - sprzeda¿ akcji
+			wallet += stock * samples[i];
+			stock = 0;
+		}
+		else if (macdIndicators[i] > signals[i] &&
+				isLastHigher(CHECKED_LAST_ELEMENTS, &signals[i], &macdIndicators[i])) { // z do³u - zakup akcji
+			stockToBuy = wallet / samples[i];
+			stock += stockToBuy;
+			wallet -= stockToBuy * samples[i];
+		}
+		lastMacd = macdIndicators[i];
+		lastSignal = signals[i];
+	}
+	return (stock*samples[samplesAmount-1] + wallet)/(initialStock* samples[0]);
 }
 
-void MACD::calculate(char * outputFile)
+void Macd::calculate(char * outputFile)
 {
-	int totalPeriod = MACD_PERIOD + SIGNAL_PERIOD;
-	for (int i = 0; i < samplesAmount - MACD_PERIOD; ++i) {
-		macdIndicators[i] = ema(MACD_PERIOD_1, samples + i + MACD_PERIOD - 1, 2 / (MACD_PERIOD_1 - 1.0)) - ema(MACD_PERIOD, samples + i + MACD_PERIOD - 1, 2 / (MACD_PERIOD - 1.0));
+	for (int i = MACD_PERIOD; i < samplesAmount; ++i) {
+		macdIndicators[i] = ema(SMALLER_MACD_PERIOD, samples + i , 2.0 / (SMALLER_MACD_PERIOD - 1.0)) -
+							ema(MACD_PERIOD, samples + i, 2.0 / (MACD_PERIOD - 1.0));
 	}
-	for (int i = 0; i < samplesAmount - totalPeriod; ++i) {
-		signals[i] = ema(SIGNAL_PERIOD, macdIndicators + i + SIGNAL_PERIOD - 1, 2/(SIGNAL_PERIOD - 1.0));
+	for (int i = MS_PERIOD; i < samplesAmount; ++i) {
+		signals[i] = ema(SIGNAL_PERIOD, macdIndicators + i, 2.0 /(SIGNAL_PERIOD - 1.0));
 	}
 
 	writeToFile(outputFile);
 }
 
 
-MACD::~MACD()
+Macd::~Macd()
 {
 	if (samples) delete[] samples;
 	if (macdIndicators) delete[] macdIndicators;

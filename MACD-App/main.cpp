@@ -1,23 +1,21 @@
 #include <iostream>
-#include "MACD.h"
+#include <stdio.h>
+#include "Macd.h"
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
-	//if (argc < 3) return 0;
+	if (argc < 4) return 0;
 
-	//char* inputFile = argv[1];
-	//char* outputFile = argv[2];
+	char* inputFile = argv[1];
+	char* outputFile = argv[2];
+	int samplesAmount = atoi(argv[3]);
 
-	char ifile[] = "./Samples.txt";
-	char ofile[] = "results";
-	MACD macd;
-	macd.loadSamples(ifile, 1000);
-	macd.calculate(ofile);
-
-	//double table[3] = { 5.0, 6.0, 7.0 };
-	//double value = macd.ema(3, table + 2, 0.5);
-	//macd.compute(outputFile);
+	Macd macd;
+	macd.loadSamples(inputFile, samplesAmount);
+	macd.calculate(outputFile);
+	cout << "Zarobek po miesiacu (poczatkowe 1000 akcji): " << macd.optimalEarning(samplesAmount);
+	//getchar();
 
 	return 0;
 }
