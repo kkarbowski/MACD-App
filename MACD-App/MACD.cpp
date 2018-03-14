@@ -84,7 +84,7 @@ bool Macd::isLastHigher(int amount, double * tab1, double * tab2)
 	if (input == NULL) return 0;
 	allocate();
 
-	while (fscanf(input, "%lf", &samples[iter]) != EOF && iter < samplesAmount) {
+	while (iter < samplesAmount && fscanf(input, "%lf", &samples[iter]) != EOF) {
 		++iter;
 	}
 	samplesAmount = iter;
@@ -128,7 +128,7 @@ void Macd::calculate(char * outputFile)
 		signals[i] = ema(SIGNAL_PERIOD, macdIndicators + i, 2.0 /(SIGNAL_PERIOD - 1.0));
 	}
 
-	writeToFile(outputFile);
+	if (outputFile[0] != 0) writeToFile(outputFile);
 }
 
 
