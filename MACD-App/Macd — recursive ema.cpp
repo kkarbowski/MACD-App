@@ -88,11 +88,11 @@ double Macd::optimalEarning(int initialStock)
 			stock = initialStock;
 
 	for (int i = 1; i < samplesAmount - MACD_PERIOD  - SIGNAL_PERIOD; ++i) {
-		if (lastMacd > lastSignal && shiftedMacdInd[i] < signals[i]) { // MACD przecina z góry - sprzeda¿ akcji
+		if (lastMacd > lastSignal && shiftedMacdInd[i] < signals[i]) { // MACD przecina z gÃ³ry - sprzedaÂ¿ akcji
 			wallet += stock * shiftedSamples[i];
 			stock = 0;
 		}
-		else if (lastMacd < lastSignal && shiftedMacdInd[i] > signals[i]) { // z do³u - zakup akcji
+		else if (lastMacd < lastSignal && shiftedMacdInd[i] > signals[i]) { // z doÂ³u - zakup akcji
 			stockToBuy = wallet / shiftedSamples[i];
 			stock += stockToBuy;
 			wallet -= stockToBuy * shiftedSamples[i];
